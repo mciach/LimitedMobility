@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limited Mobility</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            border: 1px solid black;
+            display: block;
+            margin: 0 auto;
+        }
+        #controls {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Brownian Motion Game</h1>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="controls">
+        <label for="friendlinessSlider">Friendliness: </label>
+        <input type="range" id="friendlinessSlider" min="-2" max="2" step="0.1" value="1">
+        <span id="friendlinessValue">1.0</span>
+        <br>
+        <label for="visibilitySlider">Visibility: </label>
+        <input type="range" id="visibilitySlider" min="1" max="200" step="1" value="10">
+        <span id="visibilityValue">100</span>
+    </div>
+
+    <script>
+        // Canvas setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const WIDTH = canvas.width;
+        const HEIGHT = canvas.height;
+
+        // Game parameters
+        const DOT_RADIUS = 5;
+        const SPECIAL_RADIUS = 7;
+        const N = 50;
+        const UNITY = 0.5
+
+        // Adjustable parameters
+        let jitter = 1.0; // Previously "neuroticism"
+        let friendliness = 1.0;
+        let friendlyRadius = 100;
+
+        // Initialize dots and special dot
+        const dots = Array.from({ length: N }, () => ({
+            x: Math.random() * WIDTH,
+            y: Math.random() * HEIGHT,
+            vx: (Math.random()-0.5)*2,
+            vy: (Math.random()-0.5)*2
+        }));
+
+        const specialDot = { x: WIDTH / 2, y: HEIGHT / 2 };
+
+        // Update dot positions
+        function moveDots() {
+            dots.forEach(dot => {
+                const dx = specialDot.x - dot.x;
+                const dy = specialDot.y - dot.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < SPECIAL_RADIUS+DOT_RADIUS) {
+                    dot.x += (Math.random() - 0.5) * jitter;
+                    dot.y += (Math.random() - 0.5) * jitter;
+                } else if (dist < friendlyRadius) {
+                    dot.x += dx * friendliness / dist + (Math.random() - 0.5) * jitter;
+                    dot.y += dy * friendliness / dist + (Math.random() - 0.5) * jitter;
+                } else {
+                    dot.x += dot.vx*(1-UNITY) + UNITY + (Math.random() - 0.5) * jitter;
+                    dot.y += dot.vy*(1-UNITY) + UNITY + (Math.random() - 0.5) * jitter;
+                }
+
+                // Wrap around screen
+                dot.x = (dot.x + WIDTH) % WIDTH;
+                dot.y = (dot.y + HEIGHT) % HEIGHT;
+            });
+        }
+
+        // Draw all elements
+        function draw() {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+            // Draw dots
+            ctx.fillStyle = 'black';
+            dots.forEach(dot => {
+                ctx.beginPath();
+                ctx.arc(dot.x, dot.y, DOT_RADIUS, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw special dot
+            ctx.fillStyle = 'red';
+            ctx.beginPath();
+            ctx.arc(specialDot.x, specialDot.y, SPECIAL_RADIUS, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Update sliders
+        function updateSliders() {
+            const friendlySlider = document.getElementById('friendlinessSlider');
+            friendliness = parseFloat(friendlySlider.value);
+            document.getElementById('friendlinessValue').textContent = friendliness.toFixed(1);
+
+            const visibilitySlider = document.getElementById('visibilitySlider');
+            friendlyRadius = parseFloat(visibilitySlider.value);
+            document.getElementById('visibilityValue').textContent = friendlyRadius;
+        }
+
+        // Mouse interaction
+        canvas.addEventListener('mousemove', event => {
+            const rect = canvas.getBoundingClientRect();
+            specialDot.x = event.clientX - rect.left;
+            specialDot.y = event.clientY - rect.top;
+        });
+
+        // Main game loop
+        function gameLoop() {
+            updateSliders();
+            moveDots();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start the game
+        gameLoop();
+    </script>
+</body>
+</html>
