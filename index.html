@@ -8,6 +8,9 @@
         body {
             text-align: center;
             font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
         }
         canvas {
             border: 1px solid black;
@@ -17,11 +20,14 @@
         #controls {
             margin-top: 10px;
         }
+        label, input, span {
+            font-size: 1rem;
+        }
     </style>
 </head>
 <body>
-    <h1>Brownian Motion Game</h1>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <h1>Limited Mobility</h1>
+    <canvas id="gameCanvas"></canvas>
     <div id="controls">
         <label for="friendlinessSlider">Friendliness: </label>
         <input type="range" id="friendlinessSlider" min="-2" max="2" step="0.1" value="1">
@@ -36,29 +42,33 @@
         // Canvas setup
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const WIDTH = canvas.width;
-        const HEIGHT = canvas.height;
+
+        // Set canvas dimensions dynamically based on the screen size
+        const WIDTH = Math.min(window.innerWidth, 800);
+        const HEIGHT = Math.min(window.innerHeight * 0.8, 600);
+        canvas.width = WIDTH;
+        canvas.height = HEIGHT;
 
         // Game parameters
         const DOT_RADIUS = 5;
         const SPECIAL_RADIUS = 7;
         const N = 50;
-        const UNITY = 0.5
+        const UNITY=0.5;
 
         // Adjustable parameters
-        let jitter = 1.0; // Previously "neuroticism"
+        let jitter = 1.0; // Fixed value
         let friendliness = 1.0;
-        let friendlyRadius = 100;
+        let friendlyRadius = 10;
 
         // Initialize dots and special dot
         const dots = Array.from({ length: N }, () => ({
             x: Math.random() * WIDTH,
             y: Math.random() * HEIGHT,
             vx: (Math.random()-0.5)*2,
-            vy: (Math.random()-0.5)*2
+            vy: (Math.random()-0.5)*2,
         }));
 
-        const specialDot = { x: WIDTH / 2, y: HEIGHT / 2 };
+        const specialDot = { x: WIDTH / 2, y: HEIGHT / 2, dragging: false };
 
         // Update dot positions
         function moveDots() {
@@ -115,12 +125,50 @@
             document.getElementById('visibilityValue').textContent = friendlyRadius;
         }
 
-        // Mouse interaction
-        canvas.addEventListener('mousemove', event => {
+        // Mouse and touch interaction
+        canvas.addEventListener('mousedown', startDragging);
+        canvas.addEventListener('mouseup', stopDragging);
+        canvas.addEventListener('mousemove', dragSpecialDot);
+
+        canvas.addEventListener('touchstart', startDragging);
+        canvas.addEventListener('touchend', stopDragging);
+        canvas.addEventListener('touchmove', dragSpecialDot);
+
+        function startDragging(event) {
+            const { clientX, clientY } = getPointerPosition(event);
             const rect = canvas.getBoundingClientRect();
-            specialDot.x = event.clientX - rect.left;
-            specialDot.y = event.clientY - rect.top;
-        });
+            const mouseX = clientX - rect.left;
+            const mouseY = clientY - rect.top;
+
+            // Check if the mouse is within the special dot's radius
+            const dx = mouseX - specialDot.x;
+            const dy = mouseY - specialDot.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist <= SPECIAL_RADIUS) {
+                specialDot.dragging = true;
+            }
+        }
+
+        function stopDragging() {
+            specialDot.dragging = false;
+        }
+
+        function dragSpecialDot(event) {
+            if (specialDot.dragging) {
+                const { clientX, clientY } = getPointerPosition(event);
+                const rect = canvas.getBoundingClientRect();
+                specialDot.x = clientX - rect.left;
+                specialDot.y = clientY - rect.top;
+                event.preventDefault(); // Prevent touch scrolling while dragging
+            }
+        }
+
+        function getPointerPosition(event) {
+            if (event.touches && event.touches.length > 0) {
+                return { clientX: event.touches[0].clientX, clientY: event.touches[0].clientY };
+            }
+            return { clientX: event.clientX, clientY: event.clientY };
+        }
 
         // Main game loop
         function gameLoop() {
